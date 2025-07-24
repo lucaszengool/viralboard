@@ -1,0 +1,385 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #00ff41;
+  --primary-hover: #00cc33;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #000000;
+  color: #ffffff;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 2px;
+}
+
+/* 3D perspective */
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}
+
+/* Stage spotlight effects */
+.spotlight {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.spotlight-main {
+  width: 800px;
+  height: 800px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.08) 20%,
+    rgba(255, 255, 255, 0.02) 40%,
+    transparent 70%
+  );
+  animation: spotlight-breathe 4s ease-in-out infinite;
+}
+
+.spotlight-left {
+  width: 600px;
+  height: 600px;
+  top: 20%;
+  left: -10%;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.02) 30%,
+    transparent 60%
+  );
+  animation: spotlight-drift-left 20s ease-in-out infinite;
+}
+
+.spotlight-right {
+  width: 600px;
+  height: 600px;
+  top: 20%;
+  right: -10%;
+  background: radial-gradient(
+    circle at center,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.02) 30%,
+    transparent 60%
+  );
+  animation: spotlight-drift-right 20s ease-in-out infinite;
+}
+
+.stage-glow {
+  position: absolute;
+  bottom: -50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150%;
+  height: 100%;
+  background: radial-gradient(
+    ellipse at center bottom,
+    rgba(255, 255, 255, 0.02) 0%,
+    transparent 50%
+  );
+}
+
+/* Spotlight animations */
+@keyframes spotlight-breathe {
+  0%, 100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+@keyframes spotlight-drift-left {
+  0%, 100% {
+    transform: translateX(0) translateY(0);
+  }
+  50% {
+    transform: translateX(10%) translateY(-10%);
+  }
+}
+
+@keyframes spotlight-drift-right {
+  0%, 100% {
+    transform: translateX(0) translateY(0);
+  }
+  50% {
+    transform: translateX(-10%) translateY(-10%);
+  }
+}
+
+/* Premium text animations */
+@keyframes text-reveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-text-reveal {
+  animation: text-reveal 0.6s ease-out;
+}
+
+@keyframes char-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+.animate-char-float {
+  display: inline-block;
+  animation: char-float 3s ease-in-out infinite;
+}
+
+/* Stage float effect */
+@keyframes stage-float {
+  0%, 100% {
+    transform: translateY(0) rotateX(0) rotateY(0);
+  }
+  25% {
+    transform: translateY(-5px) rotateX(1deg) rotateY(1deg);
+  }
+  75% {
+    transform: translateY(5px) rotateX(-1deg) rotateY(-1deg);
+  }
+}
+
+.animate-stage-float {
+  animation: stage-float 8s ease-in-out infinite;
+}
+
+/* Particle orbit animation */
+@keyframes particle-orbit {
+  0% {
+    transform: 
+      rotate(0deg) 
+      translateX(200px) 
+      rotate(0deg)
+      scale(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+    transform: 
+      rotate(36deg) 
+      translateX(200px) 
+      rotate(-36deg)
+      scale(1);
+  }
+  90% {
+    opacity: 1;
+    transform: 
+      rotate(324deg) 
+      translateX(200px) 
+      rotate(-324deg)
+      scale(1);
+  }
+  100% {
+    transform: 
+      rotate(360deg) 
+      translateX(200px) 
+      rotate(-360deg)
+      scale(0);
+    opacity: 0;
+  }
+}
+
+.animate-particle-orbit {
+  animation: particle-orbit linear infinite;
+}
+
+/* Subtle grid background */
+.bg-grid-subtle {
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, 0.01) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.01) 1px, transparent 1px);
+  background-size: 100px 100px;
+}
+
+/* Text animations */
+@keyframes text-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes word-fade {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-left {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes zoom-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes float-particle {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.2;
+  }
+  90% {
+    opacity: 0.2;
+  }
+  100% {
+    transform: translate(100px, -100vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.animate-text-reveal {
+  animation: text-reveal 0.8s ease-out;
+}
+
+.animate-word-fade {
+  animation: word-fade 0.8s ease-out both;
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.6s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slide-in-left 0.6s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.6s ease-out;
+}
+
+.animate-zoom-in {
+  animation: zoom-in 0.6s ease-out;
+}
+
+.animate-float-particle {
+  animation: float-particle 20s linear infinite;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent scroll on body */
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Delay classes for animations */
+.delay-1000 {
+  animation-delay: 1s;
+}
+
+/* Button focus styles */
+button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+
+/* Utility classes */
+@layer components {
+  .btn-primary {
+    @apply px-6 py-3 text-black font-medium rounded-full transition-all duration-200;
+    background-color: var(--primary);
+  }
+  
+  .btn-primary:hover {
+    background-color: var(--primary-hover);
+    transform: scale(1.05);
+  }
+}
