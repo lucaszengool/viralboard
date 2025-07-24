@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { api } from '../lib/api'
+import { supabase } from '../lib/supabase'
 
 interface CommentData {
   submissionId: string
@@ -8,14 +8,29 @@ interface CommentData {
 
 export function useAddComment() {
   const queryClient = useQueryClient()
-
+  
   return useMutation({
     mutationFn: async ({ submissionId, content }: CommentData) => {
-      const response = await api.post(`/api/submissions/${submissionId}/comments`, { content })
-      return response.data
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) throw new Error('User must be logged in to comment')
+      
+      const { data, error } = await supabase
+        .from('comments')
+        .insert([{
+          submission_id: submissionId,
+          content,
+          user_id: user.id
+        }])
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['submission', variables.submissionId] })
+      queryClient.invalidateQueries({ queryKey: ['comments', variables.submissionId] })
     },
   })
 }
