@@ -1,4 +1,3 @@
-// src/hooks/useCreateComment.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useUser } from '@clerk/clerk-react'
 import { supabase } from '../lib/supabase'
@@ -16,18 +15,28 @@ export function useCreateComment() {
     mutationFn: async ({ submissionId, content }: CreateCommentData) => {
       if (!user) throw new Error('User not authenticated')
 
+      // For authenticated users, use their actual ID
+      const userId = user.id
+      const userName = user.username || user.firstName || 'Anonymous'
+
+      console.log('Creating comment with:', { userId, userName, submissionId, content })
+
       const { data, error } = await supabase
         .from('comments')
         .insert({
           submission_id: submissionId,
-          user_id: user.id,
-          user_name: user.username || user.firstName || 'Anonymous',
+          user_id: userId,
+          user_name: userName,
           content
         })
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error:', error)
+        throw error
+      }
+      
       return data
     },
     onSuccess: () => {

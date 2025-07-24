@@ -1,4 +1,3 @@
-// src/hooks/useVote.ts
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useUser } from '@clerk/clerk-react'
 import { supabase } from '../lib/supabase'
@@ -16,13 +15,20 @@ export function useVote() {
     mutationFn: async ({ submissionId, type }: VoteData) => {
       if (!user) throw new Error('User not authenticated')
 
+      console.log('Voting with:', { userId: user.id, submissionId, type })
+
       // Check if user already voted
-      const { data: existingVote } = await supabase
+      const { data: existingVote, error: checkError } = await supabase
         .from('votes')
         .select('*')
         .eq('submission_id', submissionId)
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
+
+      if (checkError) {
+        console.error('Error checking existing vote:', checkError)
+        throw checkError
+      }
 
       if (existingVote) {
         if (existingVote.vote_type === type) {
@@ -54,7 +60,10 @@ export function useVote() {
             vote_type: type
           })
 
-        if (error) throw error
+        if (error) {
+          console.error('Error creating vote:', error)
+          throw error
+        }
         return { action: 'created' }
       }
     },
