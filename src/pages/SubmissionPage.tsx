@@ -1,319 +1,478 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Upload, Sparkles, X, Copy, Check, Share2 } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '@clerk/clerk-react'
+import { ArrowLeft, Heart, HeartOff, MessageSquare, Share2, Send, Image, Upload, X } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+import { useSubmission } from '../hooks/useSubmission'
+import { useVote } from '../hooks/useVote'
+import { useCreateComment } from '../hooks/useCreateComment'
 import { useCreateSubmission } from '../hooks/useCreateSubmission'
+import { supabase } from '../lib/supabase'
 
 export default function SubmissionPage() {
+  const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [content, setContent] = useState('')
-  const [userName, setUserName] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
+  const { isSignedIn } = useAuth()
+  const [comment, setComment] = useState('')
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [showSubmitModal, setShowSubmitModal] = useState(false)
+  const [newContent, setNewContent] = useState('')
+  const [newUserName, setNewUserName] = useState('')
+  const [newImageUrl, setNewImageUrl] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState('')
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [submissionComplete, setSubmissionComplete] = useState(false)
-  const [shareLink, setShareLink] = useState('')
-  const [copied, setCopied] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [error, setError] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
-  const { mutate: createSubmission } = useCreateSubmission()
+  const { data: submission, isLoading } = useSubmission(id!)
+  const { vote } = useVote()
+  const createComment = useCreateComment()
+  const createSubmission = useCreateSubmission()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file')
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size must be less than 5MB')
+      return
+    }
+
+    setImageFile(file)
+    setNewImageUrl('')
+    setError('')
+    
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const uploadImage = async (file: File): Promise<string> => {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`
+    const filePath = `${fileName}`
+
+    setUploadProgress(20)
+
+    const { error: uploadError, data } = await supabase.storage
+      .from('submissions')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      })
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError)
+      throw new Error('Failed to upload image')
+    }
+
+    setUploadProgress(80)
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('submissions')
+      .getPublicUrl(filePath)
+
+    setUploadProgress(100)
+
+    return publicUrl
+  }
+
+  const handleVote = async (type: 'like' | 'dislike') => {
+    if (!isSignedIn) {
+      navigate('/login')
+      return
+    }
+    
+    if (!submission) return
+    
+    try {
+      await vote.mutateAsync({ submissionId: submission.id, type })
+    } catch (error) {
+      console.error('Vote error:', error)
+    }
+  }
+
+  const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!content.trim() || !userName.trim()) return
-
-    setIsProcessing(true)
-
-    // Create the submission without payment
-    createSubmission(
-      { 
-        content, 
-        imageUrl,
-        userName: userName.trim() 
-      },
+    if (!isSignedIn) {
+      navigate('/login')
+      return
+    }
+    
+    if (!comment.trim() || !submission) return
+    
+    createComment.mutate(
+      { submissionId: submission.id, content: comment },
       {
-        onSuccess: (data) => {
-          // Generate shareable link
-          const link = `${window.location.origin}/message/${data.id}`
-          setShareLink(link)
-          setSubmissionComplete(true)
-          setIsProcessing(false)
-        },
-        onError: () => {
-          alert('Failed to create submission. Please try again.')
-          setIsProcessing(false)
+        onSuccess: () => {
+          setComment('')
         }
       }
     )
   }
 
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
+  const handleSubmitNew = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setUploadProgress(0)
+    
+    if (!newContent.trim() || !newUserName.trim()) {
+      setError('Please fill in all fields')
+      return
+    }
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: 'Check out my message on ViralBoard!',
-        text: content,
-        url: shareLink
+    try {
+      let finalImageUrl = newImageUrl
+
+      if (imageFile) {
+        finalImageUrl = await uploadImage(imageFile)
+      }
+
+      await createSubmission.mutateAsync({
+        content: newContent,
+        userName: newUserName,
+        imageUrl: finalImageUrl || undefined
       })
-    } else {
-      handleCopyLink()
+      
+      setShowSubmitModal(false)
+      navigate('/')
+    } catch (error) {
+      console.error('Submit error:', error)
+      setError('Failed to submit. Please try again.')
+      setUploadProgress(0)
     }
   }
 
-  const handleImageUrlChange = (url: string) => {
-    setImageUrl(url)
-    setImagePreview(url)
+  const clearImage = () => {
+    setImageFile(null)
+    setNewImageUrl('')
+    setImagePreview('')
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
   }
 
-  if (submissionComplete) {
+  const shareUrl = `${window.location.origin}/submission/${id}`
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(shareUrl)
+    alert('Link copied to clipboard!')
+  }
+
+  if (isLoading) {
     return (
-      <div className="fixed inset-0 bg-black overflow-hidden">
-        {/* Background effects */}
-        <div className="absolute inset-0">
-          <div className="spotlight spotlight-main"></div>
-          <div className="stage-glow"></div>
-        </div>
-
-        {/* Success content */}
-        <div className="relative h-full flex items-center justify-center p-8">
-          <div className="w-full max-w-2xl text-center">
-            <div className="mb-8">
-              <div className="w-20 h-20 bg-green-500 rounded-full mx-auto mb-6 flex items-center justify-center animate-zoom-in">
-                <Check className="w-10 h-10 text-black" />
-              </div>
-              <h1 className="text-5xl md:text-6xl font-thin mb-4 text-white animate-fade-in-up">
-                Message Posted!
-              </h1>
-              <p className="text-xl text-gray-400 font-light">
-                Share your message with the world
-              </p>
-            </div>
-
-            {/* Share link */}
-            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 mb-8 border border-white/10">
-              <p className="text-sm text-gray-400 mb-3 uppercase tracking-widest">Your message link</p>
-              <div className="flex items-center gap-3">
-                <input
-                  type="text"
-                  value={shareLink}
-                  readOnly
-                  className="flex-1 px-4 py-3 bg-white/10 rounded-lg text-white text-sm"
-                />
-                <button
-                  onClick={handleCopyLink}
-                  className="p-3 bg-white/10 rounded-lg hover:bg-white/20 transition-all"
-                >
-                  {copied ? <Check className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={handleShare}
-                className="flex items-center gap-2 px-6 py-3 bg-purple-500 text-white rounded-full hover:bg-purple-600 transition-all"
-              >
-                <Share2 className="w-5 h-5" />
-                <span>Share</span>
-              </button>
-              
-              <button
-                onClick={() => navigate('/')}
-                className="px-6 py-3 bg-white/10 text-white rounded-full hover:bg-white/20 transition-all"
-              >
-                View Messages
-              </button>
-              
-              <button
-                onClick={() => {
-                  setSubmissionComplete(false)
-                  setContent('')
-                  setUserName('')
-                  setImageUrl('')
-                  setImagePreview('')
-                }}
-                className="px-6 py-3 bg-white/10 text-white rounded-full hover:bg-white/20 transition-all"
-              >
-                Post Another
-              </button>
-            </div>
-
-            {/* Preview */}
-            <div className="mt-12 text-gray-500 text-sm">
-              <p>Your message is now live on the billboard!</p>
-              <p>Anyone with the link can view and interact with it.</p>
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Loading...</div>
       </div>
     )
   }
 
+  if (!submission) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Submission not found</div>
+      </div>
+    )
+  }
+
+  const netVotes = submission.likes - submission.dislikes
+
   return (
-    <div className="fixed inset-0 bg-black overflow-hidden">
-      {/* Background effects */}
-      <div className="absolute inset-0">
-        <div className="spotlight spotlight-main"></div>
-        <div className="stage-glow"></div>
-      </div>
+    <div className="min-h-screen bg-black text-white">
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-8"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          Back to board
+        </button>
 
-      {/* Floating particles */}
-      <div className="absolute inset-0 pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-white/20 rounded-full animate-float"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 10}s`,
-              animationDuration: `${10 + Math.random() * 20}s`
-            }}
-          />
-        ))}
-      </div>
+        <div className="mb-8">
+          <h1 className="text-4xl md:text-5xl font-light mb-4">{submission.content}</h1>
+          
+          <div className="flex items-center gap-4 text-gray-400 text-sm">
+            <span>@{submission.userName}</span>
+            <span>•</span>
+            <span>{formatDistanceToNow(new Date(submission.createdAt))} ago</span>
+          </div>
+        </div>
 
-      {/* Main content */}
-      <div className="relative h-full flex items-center justify-center p-8 overflow-y-auto">
-        <div className="w-full max-w-2xl">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <h1 className="text-6xl md:text-7xl font-thin mb-4 text-white">
-              <span className="inline-block animate-text-reveal">
-                Share Your Message
-              </span>
-            </h1>
-            <p className="text-xl text-gray-500 font-light">
-              No sign up required • Free to post
-            </p>
+        {submission.imageUrl && (
+          <div className="mb-8">
+            <img
+              src={submission.imageUrl}
+              alt=""
+              className="w-full max-h-96 object-contain rounded-lg"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+          </div>
+        )}
+
+        <div className="flex items-center gap-6 mb-8">
+          <button
+            onClick={() => handleVote('like')}
+            className="flex items-center gap-2 group"
+          >
+            <Heart 
+              className={`w-6 h-6 transition-colors ${
+                submission.userVote === 'like' 
+                  ? 'fill-red-500 text-red-500' 
+                  : 'text-gray-400 group-hover:text-red-500'
+              }`}
+            />
+            <span className="text-lg">{submission.likes}</span>
+          </button>
+
+          <button
+            onClick={() => handleVote('dislike')}
+            className="flex items-center gap-2 group"
+          >
+            <HeartOff 
+              className={`w-6 h-6 transition-colors ${
+                submission.userVote === 'dislike' 
+                  ? 'text-gray-500' 
+                  : 'text-gray-400 group-hover:text-gray-500'
+              }`}
+            />
+            <span className="text-lg">{submission.dislikes}</span>
+          </button>
+
+          <div className="flex items-center gap-2">
+            <MessageSquare className="w-6 h-6 text-gray-400" />
+            <span className="text-lg">{submission.comments.length}</span>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Username input */}
-            <div>
-              <label className="block text-sm font-light text-gray-400 mb-3 uppercase tracking-widest">
-                Your Name
-              </label>
+          <button
+            onClick={() => setShowShareModal(true)}
+            className="flex items-center gap-2 group ml-auto"
+          >
+            <Share2 className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors" />
+          </button>
+        </div>
+
+        <div className="border-t border-gray-800 pt-8">
+          <h2 className="text-2xl font-light mb-6">Comments</h2>
+          
+          <form onSubmit={handleCommentSubmit} className="mb-8">
+            <div className="flex gap-4">
               <input
                 type="text"
-                value={userName}
-                onChange={(e) => setUserName(e.target.value)}
-                className="w-full px-6 py-4 bg-transparent border border-gray-800 rounded-2xl text-white text-xl font-light placeholder-gray-600 focus:outline-none focus:border-white/50 transition-all"
-                placeholder="Enter any username"
-                maxLength={50}
-                required
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder={isSignedIn ? "Add a comment..." : "Sign in to comment"}
+                className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/50 transition-colors"
+                disabled={!isSignedIn}
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+                disabled={!isSignedIn}
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            </div>
+          </form>
+
+          <div className="space-y-4">
+            {submission.comments.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No comments yet</p>
+            ) : (
+              submission.comments.map((comment) => (
+                <div key={comment.id} className="border-b border-gray-800 pb-4">
+                  <p className="mb-2">{comment.content}</p>
+                  <p className="text-sm text-gray-500">
+                    @{comment.userName} · {formatDistanceToNow(new Date(comment.createdAt))} ago
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        <button
+          onClick={() => setShowSubmitModal(true)}
+          className="fixed bottom-8 right-8 px-6 py-3 bg-green-500 text-black rounded-full font-medium hover:bg-green-400 transition-colors"
+        >
+          Submit New
+        </button>
+      </div>
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full">
+            <h3 className="text-2xl font-light mb-4">Share this message</h3>
+            
+            <div className="mb-4">
+              <input
+                type="text"
+                value={shareUrl}
+                readOnly
+                className="w-full px-4 py-2 bg-black/50 border border-gray-700 rounded-lg text-sm"
               />
             </div>
-
-            {/* Message input */}
-            <div>
-              <label className="block text-sm font-light text-gray-400 mb-3 uppercase tracking-widest">
-                Your Message
-              </label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full px-6 py-4 bg-transparent border border-gray-800 rounded-2xl text-white text-xl font-light placeholder-gray-600 focus:outline-none focus:border-white/50 transition-all resize-none"
-                placeholder="What do you want the world to know?"
-                rows={4}
-                maxLength={280}
-                required
-              />
-              <p className="text-xs text-gray-600 mt-2 text-right">
-                {content.length}/280 characters
-              </p>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={copyToClipboard}
+                className="flex-1 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+              >
+                Copy Link
+              </button>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="flex-1 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Close
+              </button>
             </div>
+          </div>
+        </div>
+      )}
 
-            {/* Image URL input */}
-            <div>
-              <label className="block text-sm font-light text-gray-400 mb-3 uppercase tracking-widest">
-                Image URL (Optional)
-              </label>
-              <div className="flex gap-3">
+      {/* Submit Modal */}
+      {showSubmitModal && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full my-8">
+            <h3 className="text-2xl font-light mb-6">Submit New Message</h3>
+            
+            <form onSubmit={handleSubmitNew} className="space-y-4">
+              {error && (
+                <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                  {error}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Your Name</label>
                 <input
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => handleImageUrlChange(e.target.value)}
-                  className="flex-1 px-6 py-4 bg-transparent border border-gray-800 rounded-2xl text-white placeholder-gray-600 focus:outline-none focus:border-white/50 transition-all"
-                  placeholder="https://example.com/image.jpg"
+                  type="text"
+                  value={newUserName}
+                  onChange={(e) => setNewUserName(e.target.value)}
+                  className="w-full px-4 py-2 bg-black/50 border border-gray-700 rounded-lg focus:outline-none focus:border-green-500"
+                  placeholder="Enter your name"
+                  required
                 />
-                <button
-                  type="button"
-                  className="px-6 py-4 border border-gray-800 rounded-2xl text-gray-400 hover:text-white hover:border-white/50 transition-all group"
-                  onClick={() => alert('Image upload coming soon!')}
-                >
-                  <Upload className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                </button>
               </div>
-            </div>
-
-            {/* Image preview */}
-            {imagePreview && (
-              <div className="relative inline-block">
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  className="max-w-full max-h-64 rounded-xl"
-                  onError={() => {
-                    setImagePreview('')
-                    setImageUrl('')
-                  }}
+              
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Message</label>
+                <textarea
+                  value={newContent}
+                  onChange={(e) => setNewContent(e.target.value)}
+                  className="w-full px-4 py-2 bg-black/50 border border-gray-700 rounded-lg focus:outline-none focus:border-green-500 resize-none"
+                  rows={3}
+                  placeholder="What's on your mind?"
+                  required
+                  maxLength={500}
                 />
+                <p className="text-xs text-gray-500 mt-1">{newContent.length}/500</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-400 mb-2">Image (optional)</label>
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-black/50 border border-gray-700 rounded-lg hover:bg-black/70 transition-colors"
+                  >
+                    <Upload className="w-4 h-4" />
+                    Upload from device
+                  </button>
+                  
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                  />
+                  
+                  <input
+                    type="url"
+                    value={newImageUrl}
+                    onChange={(e) => {
+                      setNewImageUrl(e.target.value)
+                      setImageFile(null)
+                      setImagePreview('')
+                    }}
+                    className="w-full px-4 py-2 bg-black/50 border border-gray-700 rounded-lg focus:outline-none focus:border-green-500"
+                    placeholder="Or paste image URL"
+                    disabled={!!imageFile}
+                  />
+                </div>
+              </div>
+
+              {(imagePreview || newImageUrl) && (
+                <div className="relative">
+                  <img
+                    src={imagePreview || newImageUrl}
+                    alt="Preview"
+                    className="w-full h-32 object-cover rounded-lg"
+                    onError={() => {
+                      if (!imagePreview) {
+                        setNewImageUrl('')
+                        setError('Invalid image URL')
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={clearImage}
+                    className="absolute top-2 right-2 p-1 bg-black/80 rounded-full"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              )}
+
+              {uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="w-full bg-white/10 rounded-full h-2">
+                  <div 
+                    className="bg-green-500 h-2 rounded-full transition-all"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              )}
+              
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  disabled={createSubmission.isPending || uploadProgress > 0}
+                  className="flex-1 py-2 bg-green-500 text-black rounded-lg hover:bg-green-400 transition-colors font-medium disabled:opacity-50"
+                >
+                  {createSubmission.isPending || uploadProgress > 0 ? 'Submitting...' : 'Submit'}
+                </button>
                 <button
                   type="button"
                   onClick={() => {
-                    setImagePreview('')
-                    setImageUrl('')
+                    setShowSubmitModal(false)
+                    setNewContent('')
+                    setNewUserName('')
+                    clearImage()
+                    setError('')
                   }}
-                  className="absolute -top-2 -right-2 p-2 bg-black/80 rounded-full border border-gray-800 hover:border-white/50 transition-all"
+                  className="flex-1 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
                 >
-                  <X className="w-4 h-4" />
+                  Cancel
                 </button>
               </div>
-            )}
-
-            {/* Submit button */}
-            <button
-              type="submit"
-              disabled={!content.trim() || !userName.trim() || isProcessing}
-              className="w-full relative group"
-            >
-              <div className="absolute inset-0 bg-green-500/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <div className="relative flex items-center justify-center gap-3 px-8 py-5 bg-green-500 text-black rounded-full font-light text-xl transition-all transform group-hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed">
-                {isProcessing ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                    <span>Posting...</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-6 h-6" />
-                    <span>Submit Message</span>
-                  </>
-                )}
-              </div>
-            </button>
-
-            {/* Info text */}
-            <p className="text-center text-sm text-gray-500">
-              Sign in to vote and comment on messages
-            </p>
-          </form>
-
-          {/* Cancel button */}
-          <button
-            onClick={() => navigate('/')}
-            className="mt-6 text-gray-600 hover:text-white transition-colors text-sm block mx-auto"
-          >
-            Cancel and go back
-          </button>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
