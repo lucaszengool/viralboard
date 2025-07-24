@@ -35,6 +35,7 @@ export default function SubmitPage() {
 
     setImageFile(file)
     setImageUrl('') // Clear URL if file is selected
+    setError('') // Clear any previous errors
     
     // Create preview
     const reader = new FileReader()
@@ -98,12 +99,15 @@ export default function SubmitPage() {
         finalImageUrl = await uploadImage(imageFile)
       }
 
-      await createSubmission.mutateAsync({
+      const result = await createSubmission.mutateAsync({
         content: content.trim(),
         userName: userName.trim(),
         imageUrl: finalImageUrl || undefined
       })
       
+      console.log('Submission created:', result)
+      
+      // Navigate to home page instead of submission page
       navigate('/')
     } catch (err) {
       console.error('Submit error:', err)
@@ -163,6 +167,7 @@ export default function SubmitPage() {
               rows={4}
               className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-green-500 transition-colors resize-none"
               required
+              maxLength={500}
             />
             <p className="text-sm text-gray-500 mt-1">{content.length}/500 characters</p>
           </div>
@@ -174,7 +179,7 @@ export default function SubmitPage() {
               className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-3"
             >
               <Image className="w-5 h-5" />
-              {showImageOptions ? 'Hide' : 'Add'} Image
+              {showImageOptions ? 'Hide' : 'Add'} Image (Optional)
             </button>
             
             {showImageOptions && (
@@ -208,11 +213,15 @@ export default function SubmitPage() {
                       setImageUrl(e.target.value)
                       setImageFile(null) // Clear file if URL is entered
                       setImagePreview('')
+                      setError('') // Clear any previous errors
                     }}
                     placeholder="Or paste image URL: https://example.com/image.jpg"
                     className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-green-500 transition-colors"
                     disabled={!!imageFile}
                   />
+                  <p className="text-sm text-gray-500 mt-1">
+                    {imageFile ? 'Clear uploaded file to use URL' : 'Paste any image URL from the web'}
+                  </p>
                 </div>
               </div>
             )}
@@ -235,16 +244,19 @@ export default function SubmitPage() {
               <button
                 type="button"
                 onClick={clearImage}
-                className="absolute top-2 right-2 p-1 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
+                className="absolute top-2 right-2 p-2 bg-black/80 rounded-full hover:bg-black transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
+              <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/80 rounded text-xs">
+                {imageFile ? `File: ${imageFile.name}` : 'URL Image'}
+              </div>
             </div>
           )}
 
           {/* Upload progress */}
           {uploadProgress > 0 && uploadProgress < 100 && (
-            <div className="w-full bg-white/10 rounded-full h-2">
+            <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
               <div 
                 className="bg-green-500 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${uploadProgress}%` }}
