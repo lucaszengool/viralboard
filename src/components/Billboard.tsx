@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
-import { Trophy, Plus, MessageSquare, Send, Heart, HeartOff, Share2, Clock, X } from 'lucide-react'
+import { Trophy, Plus, MessageSquare, Send, Heart, HeartOff, Share2, Clock } from 'lucide-react'
 import { Submission } from '../types'
 import { formatDistanceToNow } from 'date-fns'
 import { useVote } from '../hooks/useVote'
@@ -17,7 +17,7 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
   const [currentIndex, setCurrentIndex] = useState(0)
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showComments, setShowComments] = useState(false)
-  const [showPostDetail, setShowPostDetail] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const [comment, setComment] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -45,8 +45,8 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
       
       if (isScrolling.current) return
       
-      // Hide post detail when scrolling
-      setShowPostDetail(false)
+      // Hide details when scrolling
+      setShowDetails(false)
       
       isScrolling.current = true
       lastScrollTime = now
@@ -80,7 +80,7 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
     const diff = touchStartY.current - touchEndY
 
     if (Math.abs(diff) > 50) {
-      setShowPostDetail(false)
+      setShowDetails(false)
       isScrolling.current = true
       
       if (diff > 0 && currentIndex < submissions.length - 1) {
@@ -171,29 +171,147 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Original TikTok-style background effects */}
+      {/* Animated background effects */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-900/10 via-black to-blue-900/10"></div>
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-1000"></div>
+        
+        {/* Particle effects */}
+        <div className="particles-container">
+          {[...Array(30)].map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-white/20 rounded-full animate-float-particle"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 10}s`,
+                animationDuration: `${15 + Math.random() * 15}s`
+              }}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* Main content - Original immersive style */}
-      <div className="relative h-full flex items-center justify-center px-4 md:px-8">
-        <div className="w-full max-w-7xl mx-auto">
-          {/* Main message - Big and immersive */}
+      {/* Main content */}
+      <div className="relative h-full flex items-center justify-center">
+        <div className="w-full h-full flex flex-col items-center justify-center px-4">
+          {/* Main message - Always massive and dominant */}
           <div 
-            className="text-center px-4 md:px-16 cursor-pointer"
-            onClick={() => setShowPostDetail(true)}
+            className="text-center cursor-pointer max-w-7xl mx-auto"
+            onClick={() => setShowDetails(!showDetails)}
           >
-            <h1 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-thin leading-tight text-white mb-12 select-none">
-              <span className="inline-block">
-                {currentSubmission.content}
-              </span>
+            <h1 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-thin leading-tight text-white select-none px-4">
+              {currentSubmission.content}
             </h1>
             
-            <p className="text-gray-500 text-sm animate-pulse">Click to view details</p>
+            {!showDetails && (
+              <p className="text-gray-500 text-sm animate-pulse mt-8">Click to reveal details</p>
+            )}
           </div>
+
+          {/* Image - Shown larger when details are visible */}
+          {showDetails && currentSubmission.imageUrl && (
+            <div className="mt-8 max-w-5xl mx-auto px-4 animate-fade-in">
+              <img
+                src={currentSubmission.imageUrl}
+                alt=""
+                className="w-full max-h-[70vh] object-contain rounded-2xl shadow-2xl"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+            </div>
+          )}
+
+          {/* Details - Integrated into the same immersive view */}
+          {showDetails && (
+            <>
+              {/* User info - Subtle and integrated */}
+              <div className="fixed top-8 left-8 flex items-center gap-3 animate-fade-in z-20">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-500/50 to-pink-500/50 backdrop-blur-sm flex items-center justify-center">
+                  <span className="text-lg font-bold">
+                    {currentSubmission.userName.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <p className="font-medium text-white/80">@{currentSubmission.userName}</p>
+                  <p className="text-sm text-gray-400">
+                    {formatDistanceToNow(new Date(currentSubmission.createdAt))} ago
+                  </p>
+                </div>
+              </div>
+
+              {/* Action buttons - Floating and transparent */}
+              <div className="fixed right-8 top-1/2 -translate-y-1/2 flex flex-col items-center gap-6 animate-fade-in z-20">
+                {/* Like button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleVote('like')
+                  }}
+                  className="flex flex-col items-center gap-2 group"
+                >
+                  <div className="p-4 bg-white/5 backdrop-blur-sm rounded-full group-hover:bg-white/10 transition-all">
+                    <Heart 
+                      className={`w-10 h-10 transition-all group-hover:scale-110 ${
+                        currentSubmission.userVote === 'like' 
+                          ? 'fill-red-500 text-red-500' 
+                          : 'text-white/70'
+                      }`}
+                    />
+                  </div>
+                  <span className="text-lg font-light text-white/70">{currentSubmission.likes}</span>
+                </button>
+
+                {/* Dislike button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleVote('dislike')
+                  }}
+                  className="flex flex-col items-center gap-2 group"
+                >
+                  <div className="p-4 bg-white/5 backdrop-blur-sm rounded-full group-hover:bg-white/10 transition-all">
+                    <HeartOff 
+                      className={`w-10 h-10 transition-all group-hover:scale-110 ${
+                        currentSubmission.userVote === 'dislike' 
+                          ? 'text-gray-500' 
+                          : 'text-white/70'
+                      }`}
+                    />
+                  </div>
+                  <span className="text-lg font-light text-white/70">{currentSubmission.dislikes}</span>
+                </button>
+
+                {/* Comment button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowComments(true)
+                  }}
+                  className="flex flex-col items-center gap-2 group"
+                >
+                  <div className="p-4 bg-white/5 backdrop-blur-sm rounded-full group-hover:bg-white/10 transition-all">
+                    <MessageSquare className="w-10 h-10 text-white/70 transition-all group-hover:scale-110" />
+                  </div>
+                  <span className="text-lg font-light text-white/70">{currentSubmission.comments.length}</span>
+                </button>
+
+                {/* Share button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    copyShareLink()
+                  }}
+                  className="p-4 bg-white/5 backdrop-blur-sm rounded-full group-hover:bg-white/10 transition-all group"
+                >
+                  <Share2 className="w-10 h-10 text-white/70 transition-all group-hover:scale-110" />
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Progress indicator - Always visible */}
@@ -203,7 +321,7 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
               key={index}
               onClick={() => {
                 setCurrentIndex(index)
-                setShowPostDetail(false)
+                setShowDetails(false)
               }}
               className={`transition-all duration-300 ${
                 index === currentIndex 
@@ -215,117 +333,7 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
         </div>
       </div>
 
-      {/* X/Twitter-style Post Detail Overlay */}
-      {showPostDetail && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 flex items-center justify-center px-4"
-          onClick={() => setShowPostDetail(false)}
-        >
-          <div 
-            className="w-full max-w-2xl bg-black/80 backdrop-blur-xl border border-gray-800 rounded-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="p-4 flex items-center justify-between border-b border-gray-800">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                  <span className="text-lg font-bold text-white">
-                    {currentSubmission.userName.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <p className="font-medium text-white">@{currentSubmission.userName}</p>
-                  <p className="text-sm text-gray-400">
-                    {formatDistanceToNow(new Date(currentSubmission.createdAt))} ago
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowPostDetail(false)}
-                className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-4">
-              <p className="text-xl text-white mb-4">
-                {currentSubmission.content}
-              </p>
-
-              {/* Image */}
-              {currentSubmission.imageUrl && (
-                <div className="mb-4 -mx-4">
-                  <img
-                    src={currentSubmission.imageUrl}
-                    alt=""
-                    className="w-full max-h-[400px] object-cover"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none'
-                    }}
-                  />
-                </div>
-              )}
-
-              {/* Stats */}
-              <div className="flex items-center gap-6 py-3 text-gray-400 text-sm">
-                <span>{currentSubmission.likes} likes</span>
-                <span>{currentSubmission.dislikes} dislikes</span>
-                <span>{currentSubmission.comments.length} comments</span>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="p-4 border-t border-gray-800 flex items-center justify-around">
-              <button
-                onClick={() => handleVote('like')}
-                className="flex items-center gap-2 p-2 hover:bg-gray-800 rounded-full transition-all"
-              >
-                <Heart 
-                  className={`w-6 h-6 ${
-                    currentSubmission.userVote === 'like' 
-                      ? 'fill-red-500 text-red-500' 
-                      : 'text-gray-400'
-                  }`}
-                />
-              </button>
-
-              <button
-                onClick={() => handleVote('dislike')}
-                className="flex items-center gap-2 p-2 hover:bg-gray-800 rounded-full transition-all"
-              >
-                <HeartOff 
-                  className={`w-6 h-6 ${
-                    currentSubmission.userVote === 'dislike' 
-                      ? 'text-gray-500' 
-                      : 'text-gray-400'
-                  }`}
-                />
-              </button>
-
-              <button
-                onClick={() => {
-                  setShowPostDetail(false)
-                  setShowComments(true)
-                }}
-                className="flex items-center gap-2 p-2 hover:bg-gray-800 rounded-full transition-all"
-              >
-                <MessageSquare className="w-6 h-6 text-gray-400" />
-              </button>
-
-              <button
-                onClick={copyShareLink}
-                className="p-2 hover:bg-gray-800 rounded-full transition-all"
-              >
-                <Share2 className="w-6 h-6 text-gray-400" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Fixed UI Elements - Original style */}
+      {/* Fixed UI Elements */}
       <Link
         to="/submit"
         className="fixed bottom-8 left-[40%] -translate-x-1/2 group z-50"
@@ -350,9 +358,9 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
         </div>
       </button>
 
-      {/* Comments overlay - Original style */}
+      {/* Comments overlay */}
       {showComments && (
-        <div className="fixed inset-0 bg-black/98 z-50 overflow-y-auto animate-fade-in backdrop-blur-xl">
+        <div className="fixed inset-0 bg-black/95 z-50 overflow-y-auto backdrop-blur-xl">
           <div className="min-h-screen py-16">
             <div className="max-w-3xl mx-auto px-8">
               <button
@@ -386,7 +394,7 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
                   </button>
                 </div>
                 {!isSignedIn && (
-                  <p className="text-sm text-gray-500 mt-2">
+                  <p className="text-sm text-gray-500 mt-2 text-center">
                     <button
                       type="button"
                       onClick={() => navigate('/login')}
@@ -405,8 +413,17 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
                 ) : (
                   currentSubmission.comments.map((comment) => (
                     <div key={comment.id} className="border-b border-gray-900 pb-6">
-                      <p className="text-lg mb-2 font-light">{comment.content}</p>
-                      <p className="text-sm text-gray-600 tracking-wide">@{comment.userName} · {formatDistanceToNow(new Date(comment.createdAt))} ago</p>
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-white/5 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                          <span className="text-sm">
+                            {comment.userName.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-lg mb-2 font-light">{comment.content}</p>
+                          <p className="text-sm text-gray-600">@{comment.userName} · {formatDistanceToNow(new Date(comment.createdAt))} ago</p>
+                        </div>
+                      </div>
                     </div>
                   ))
                 )}
@@ -416,9 +433,9 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
         </div>
       )}
 
-      {/* Leaderboard overlay - Original style */}
+      {/* Leaderboard overlay */}
       {showLeaderboard && (
-        <div className="fixed inset-0 bg-black/98 z-50 overflow-y-auto backdrop-blur-xl animate-fade-in">
+        <div className="fixed inset-0 bg-black/95 z-50 overflow-y-auto backdrop-blur-xl">
           <div className="min-h-screen py-16">
             <div className="max-w-4xl mx-auto px-8">
               <div className="flex justify-between items-center mb-12">
@@ -444,7 +461,7 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
                       onClick={() => {
                         setCurrentIndex(submissions.indexOf(submission))
                         setShowLeaderboard(false)
-                        setShowPostDetail(false)
+                        setShowDetails(false)
                       }}
                     >
                       <div className="flex items-center gap-6">
@@ -457,7 +474,11 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
                           {index + 1}
                         </div>
                         <div>
-                          <p className="text-2xl text-white font-light group-hover:translate-x-1 transition-transform">{submission.content}</p>
+                          <p className="text-2xl text-white font-light group-hover:translate-x-1 transition-transform">
+                            {submission.content.length > 50 
+                              ? submission.content.substring(0, 50) + '...' 
+                              : submission.content}
+                          </p>
                           <p className="text-sm text-gray-500 mt-1">@{submission.userName}</p>
                         </div>
                       </div>
