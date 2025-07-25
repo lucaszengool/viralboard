@@ -10,7 +10,8 @@ export default defineConfig({
     allowedHosts: [
       'viralboard-production.up.railway.app',
       'localhost',
-      '.railway.app' // This allows all railway.app subdomains
+      '.railway.app', // This allows all railway.app subdomains
+      'viralboard.org'
     ]
   },
   server: {
