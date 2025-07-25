@@ -263,129 +263,130 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
 
   const currentSubmission = submissions[currentIndex]
 
-  // Show detail view when clicked - EXACT same layout as SubmissionPage
+  // Show detail view when clicked - Same transparent style as leaderboard
   if (showDetail) {
     return (
-      <div className="min-h-screen bg-black text-white">
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          <button
-            onClick={() => setShowDetail(false)}
-            className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-8"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            Back to board
-          </button>
+      <div className="fixed inset-0 bg-black/98 z-50 overflow-y-auto backdrop-blur-xl animate-fade-in">
+        <div className="min-h-screen py-16">
+          <div className="max-w-4xl mx-auto px-8">
+            <button
+              onClick={() => setShowDetail(false)}
+              className="text-3xl text-gray-600 hover:text-white transition-colors mb-8"
+            >
+              ×
+            </button>
 
-          <div className="mb-8">
-            <h1 className="text-4xl md:text-5xl font-light mb-4">{currentSubmission.content}</h1>
-            
-            <div className="flex items-center gap-4 text-gray-400 text-sm">
-              <span>@{currentSubmission.userName}</span>
-              <span>•</span>
-              <span>{formatDistanceToNow(new Date(currentSubmission.createdAt))} ago</span>
-            </div>
-          </div>
-
-          {currentSubmission.imageUrl && (
             <div className="mb-8">
-              <img
-                src={currentSubmission.imageUrl}
-                alt=""
-                className="w-full max-h-96 object-contain rounded-lg"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                }}
-              />
-            </div>
-          )}
-
-          <div className="flex items-center gap-6 mb-8">
-            <button
-              onClick={() => handleVote('like')}
-              className="flex items-center gap-2 group"
-            >
-              <Heart 
-                className={`w-6 h-6 transition-colors ${
-                  currentSubmission.userVote === 'like' 
-                    ? 'fill-red-500 text-red-500' 
-                    : 'text-gray-400 group-hover:text-red-500'
-                }`}
-              />
-              <span className="text-lg">{currentSubmission.likes}</span>
-            </button>
-
-            <button
-              onClick={() => handleVote('dislike')}
-              className="flex items-center gap-2 group"
-            >
-              <HeartOff 
-                className={`w-6 h-6 transition-colors ${
-                  currentSubmission.userVote === 'dislike' 
-                    ? 'text-gray-500' 
-                    : 'text-gray-400 group-hover:text-gray-500'
-                }`}
-              />
-              <span className="text-lg">{currentSubmission.dislikes}</span>
-            </button>
-
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-6 h-6 text-gray-400" />
-              <span className="text-lg">{currentSubmission.comments.length}</span>
-            </div>
-
-            <button
-              onClick={() => setShowShareModal(true)}
-              className="flex items-center gap-2 group ml-auto"
-            >
-              <Share2 className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors" />
-            </button>
-          </div>
-
-          <div className="border-t border-gray-800 pt-8">
-            <h2 className="text-2xl font-light mb-6">Comments</h2>
-            
-            <form onSubmit={handleCommentSubmit} className="mb-8">
-              <div className="flex gap-4">
-                <input
-                  type="text"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder={isSignedIn ? "Add a comment..." : "Sign in to comment"}
-                  className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/50 transition-colors"
-                  disabled={!isSignedIn}
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
-                  disabled={!isSignedIn}
-                >
-                  <Send className="w-5 h-5" />
-                </button>
+              <h1 className="text-4xl md:text-5xl font-light mb-4">{currentSubmission.content}</h1>
+              
+              <div className="flex items-center gap-4 text-gray-400 text-sm">
+                <span>@{currentSubmission.userName}</span>
+                <span>•</span>
+                <span>{formatDistanceToNow(new Date(currentSubmission.createdAt))} ago</span>
               </div>
-            </form>
-
-            <div className="space-y-4">
-              {currentSubmission.comments.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No comments yet</p>
-              ) : (
-                currentSubmission.comments.map((comment) => (
-                  <div key={comment.id} className="border-b border-gray-800 pb-4">
-                    <p className="mb-2">{comment.content}</p>
-                    <p className="text-sm text-gray-500">
-                      @{comment.userName} · {formatDistanceToNow(new Date(comment.createdAt))} ago
-                    </p>
-                  </div>
-                ))
-              )}
             </div>
-          </div>
 
-          <button
-            onClick={() => setShowSubmitModal(true)}
-            className="fixed bottom-8 right-8 px-6 py-3 bg-green-500 text-black rounded-full font-medium hover:bg-green-400 transition-colors"
-          >
-            Submit New
-          </button>
+            {currentSubmission.imageUrl && (
+              <div className="mb-8">
+                <img
+                  src={currentSubmission.imageUrl}
+                  alt=""
+                  className="w-full max-h-96 object-contain rounded-lg"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              </div>
+            )}
+
+            <div className="flex items-center gap-6 mb-8">
+              <button
+                onClick={() => handleVote('like')}
+                className="flex items-center gap-2 group"
+              >
+                <Heart 
+                  className={`w-6 h-6 transition-colors ${
+                    currentSubmission.userVote === 'like' 
+                      ? 'fill-red-500 text-red-500' 
+                      : 'text-gray-400 group-hover:text-red-500'
+                  }`}
+                />
+                <span className="text-lg">{currentSubmission.likes}</span>
+              </button>
+
+              <button
+                onClick={() => handleVote('dislike')}
+                className="flex items-center gap-2 group"
+              >
+                <HeartOff 
+                  className={`w-6 h-6 transition-colors ${
+                    currentSubmission.userVote === 'dislike' 
+                      ? 'text-gray-500' 
+                      : 'text-gray-400 group-hover:text-gray-500'
+                  }`}
+                />
+                <span className="text-lg">{currentSubmission.dislikes}</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <MessageSquare className="w-6 h-6 text-gray-400" />
+                <span className="text-lg">{currentSubmission.comments.length}</span>
+              </div>
+
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="flex items-center gap-2 group ml-auto"
+              >
+                <Share2 className="w-6 h-6 text-gray-400 group-hover:text-white transition-colors" />
+              </button>
+            </div>
+
+            <div className="border-t border-gray-800 pt-8">
+              <h2 className="text-2xl font-light mb-6">Comments</h2>
+              
+              <form onSubmit={handleCommentSubmit} className="mb-8">
+                <div className="flex gap-4">
+                  <input
+                    type="text"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder={isSignedIn ? "Add a comment..." : "Sign in to comment"}
+                    className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg focus:outline-none focus:border-white/50 transition-colors"
+                    disabled={!isSignedIn}
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+                    disabled={!isSignedIn}
+                  >
+                    <Send className="w-5 h-5" />
+                  </button>
+                </div>
+              </form>
+
+              <div className="space-y-4">
+                {currentSubmission.comments.length === 0 ? (
+                  <p className="text-gray-500 text-center py-8">No comments yet</p>
+                ) : (
+                  currentSubmission.comments.map((comment) => (
+                    <div key={comment.id} className="border-b border-gray-800 pb-4">
+                      <p className="mb-2">{comment.content}</p>
+                      <p className="text-sm text-gray-500">
+                        @{comment.userName} · {formatDistanceToNow(new Date(comment.createdAt))} ago
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowSubmitModal(true)}
+              className="fixed bottom-8 right-8 px-6 py-3 bg-green-500 text-black rounded-full font-medium hover:bg-green-400 transition-colors"
+            >
+              Submit New
+            </button>
+          </div>
         </div>
 
         {/* Share Modal */}
@@ -417,139 +418,6 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
                   Close
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-
-        {/* Submit Modal */}
-        {showSubmitModal && (
-          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 overflow-y-auto">
-            <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full my-8">
-              <h3 className="text-2xl font-light mb-6">Submit New Message</h3>
-              
-              <form onSubmit={handleSubmitNew} className="space-y-4">
-                {error && (
-                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
-                    {error}
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Your Name</label>
-                  <input
-                    type="text"
-                    value={newUserName}
-                    onChange={(e) => setNewUserName(e.target.value)}
-                    className="w-full px-4 py-2 bg-black/50 border border-gray-700 rounded-lg focus:outline-none focus:border-green-500"
-                    placeholder="Enter your name"
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Message</label>
-                  <textarea
-                    value={newContent}
-                    onChange={(e) => setNewContent(e.target.value)}
-                    className="w-full px-4 py-2 bg-black/50 border border-gray-700 rounded-lg focus:outline-none focus:border-green-500 resize-none"
-                    rows={3}
-                    placeholder="What's on your mind?"
-                    required
-                    maxLength={500}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">{newContent.length}/500</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm text-gray-400 mb-2">Image (optional)</label>
-                  <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-black/50 border border-gray-700 rounded-lg hover:bg-black/70 transition-colors"
-                    >
-                      <Upload className="w-4 h-4" />
-                      Upload from device
-                    </button>
-                    
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                    
-                    <input
-                      type="url"
-                      value={newImageUrl}
-                      onChange={(e) => {
-                        setNewImageUrl(e.target.value)
-                        setImageFile(null)
-                        setImagePreview('')
-                      }}
-                      className="w-full px-4 py-2 bg-black/50 border border-gray-700 rounded-lg focus:outline-none focus:border-green-500"
-                      placeholder="Or paste image URL"
-                      disabled={!!imageFile}
-                    />
-                  </div>
-                </div>
-
-                {(imagePreview || newImageUrl) && (
-                  <div className="relative">
-                    <img
-                      src={imagePreview || newImageUrl}
-                      alt="Preview"
-                      className="w-full h-32 object-cover rounded-lg"
-                      onError={() => {
-                        if (!imagePreview) {
-                          setNewImageUrl('')
-                          setError('Invalid image URL')
-                        }
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={clearImage}
-                      className="absolute top-2 right-2 p-1 bg-black/80 rounded-full"
-                    >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </div>
-                )}
-
-                {uploadProgress > 0 && uploadProgress < 100 && (
-                  <div className="w-full bg-white/10 rounded-full h-2">
-                    <div 
-                      className="bg-green-500 h-2 rounded-full transition-all"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                )}
-                
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="submit"
-                    disabled={createSubmission.isPending || uploadProgress > 0}
-                    className="flex-1 py-2 bg-green-500 text-black rounded-lg hover:bg-green-400 transition-colors font-medium disabled:opacity-50"
-                  >
-                    {createSubmission.isPending || uploadProgress > 0 ? 'Submitting...' : 'Submit'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowSubmitModal(false)
-                      setNewContent('')
-                      setNewUserName('')
-                      clearImage()
-                      setError('')
-                    }}
-                    className="flex-1 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
             </div>
           </div>
         )}
@@ -691,6 +559,155 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
           </div>
         </button>
       </div>
+
+      {/* Submit Modal - Same transparent style as leaderboard */}
+      {showSubmitModal && (
+        <div className="fixed inset-0 bg-black/98 z-50 overflow-y-auto backdrop-blur-xl animate-fade-in">
+          <div className="min-h-screen py-16">
+            <div className="max-w-2xl mx-auto px-8">
+              <div className="flex justify-between items-center mb-12">
+                <h2 className="text-5xl font-thin text-white tracking-wider">Submit New Message</h2>
+                <button
+                  onClick={() => {
+                    setShowSubmitModal(false)
+                    setNewContent('')
+                    setNewUserName('')
+                    clearImage()
+                    setError('')
+                  }}
+                  className="text-3xl text-gray-600 hover:text-white transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <form onSubmit={handleSubmitNew} className="space-y-4">
+                {error && (
+                  <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
+                    {error}
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Your Name</label>
+                  <input
+                    type="text"
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                    className="w-full px-4 py-2 bg-black/50 border border-gray-700 rounded-lg focus:outline-none focus:border-green-500"
+                    placeholder="Enter your name"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Message</label>
+                  <textarea
+                    value={newContent}
+                    onChange={(e) => setNewContent(e.target.value)}
+                    className="w-full px-4 py-2 bg-black/50 border border-gray-700 rounded-lg focus:outline-none focus:border-green-500 resize-none"
+                    rows={3}
+                    placeholder="What's on your mind?"
+                    required
+                    maxLength={500}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">{newContent.length}/500</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm text-gray-400 mb-2">Image (optional)</label>
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-black/50 border border-gray-700 rounded-lg hover:bg-black/70 transition-colors"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Upload from device
+                    </button>
+                    
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    
+                    <input
+                      type="url"
+                      value={newImageUrl}
+                      onChange={(e) => {
+                        setNewImageUrl(e.target.value)
+                        setImageFile(null)
+                        setImagePreview('')
+                      }}
+                      className="w-full px-4 py-2 bg-black/50 border border-gray-700 rounded-lg focus:outline-none focus:border-green-500"
+                      placeholder="Or paste image URL"
+                      disabled={!!imageFile}
+                    />
+                  </div>
+                </div>
+
+                {(imagePreview || newImageUrl) && (
+                  <div className="relative">
+                    <img
+                      src={imagePreview || newImageUrl}
+                      alt="Preview"
+                      className="w-full h-32 object-cover rounded-lg"
+                      onError={() => {
+                        if (!imagePreview) {
+                          setNewImageUrl('')
+                          setError('Invalid image URL')
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={clearImage}
+                      className="absolute top-2 right-2 p-1 bg-black/80 rounded-full"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div className="w-full bg-white/10 rounded-full h-2">
+                    <div 
+                      className="bg-green-500 h-2 rounded-full transition-all"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                )}
+                
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="submit"
+                    disabled={createSubmission.isPending || uploadProgress > 0}
+                    className="flex-1 py-2 bg-green-500 text-black rounded-lg hover:bg-green-400 transition-colors font-medium disabled:opacity-50"
+                  >
+                    {createSubmission.isPending || uploadProgress > 0 ? 'Submitting...' : 'Submit'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowSubmitModal(false)
+                      setNewContent('')
+                      setNewUserName('')
+                      clearImage()
+                      setError('')
+                    }}
+                    className="flex-1 py-2 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Leaderboard overlay */}
       {showLeaderboard && (
