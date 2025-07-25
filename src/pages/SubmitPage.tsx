@@ -18,8 +18,17 @@ export default function SubmitPage() {
   const createSubmission = useCreateSubmission()
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    console.log('File select triggered')
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file) {
+      console.log('No file selected')
+      return
+    }
+
+    console.log('File selected:', file.name, file.type, file.size)
 
     // Validate file type
     if (!file.type.startsWith('image/')) {
@@ -40,9 +49,21 @@ export default function SubmitPage() {
     // Create preview
     const reader = new FileReader()
     reader.onloadend = () => {
+      console.log('File read complete')
       setImagePreview(reader.result as string)
     }
+    reader.onerror = () => {
+      console.error('Error reading file')
+      setError('Error reading file')
+    }
     reader.readAsDataURL(file)
+  }
+
+  const handleUploadClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    console.log('Upload button clicked')
+    fileInputRef.current?.click()
   }
 
   const uploadImage = async (file: File): Promise<string> => {
@@ -50,34 +71,43 @@ export default function SubmitPage() {
     const fileName = `${Date.now()}_${Math.random().toString(36).substring(2)}.${fileExt}`
     const filePath = `${fileName}`
 
+    console.log('Starting upload:', filePath)
     setUploadProgress(20)
 
-    const { error: uploadError, data } = await supabase.storage
-      .from('submissions')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      })
+    try {
+      const { error: uploadError, data } = await supabase.storage
+        .from('submissions')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
 
-    if (uploadError) {
-      console.error('Upload error:', uploadError)
-      throw new Error('Failed to upload image')
+      if (uploadError) {
+        console.error('Upload error:', uploadError)
+        throw new Error(uploadError.message || 'Failed to upload image')
+      }
+
+      setUploadProgress(80)
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('submissions')
+        .getPublicUrl(filePath)
+
+      console.log('Upload complete, public URL:', publicUrl)
+      setUploadProgress(100)
+
+      return publicUrl
+    } catch (error) {
+      console.error('Upload failed:', error)
+      setUploadProgress(0)
+      throw error
     }
-
-    setUploadProgress(80)
-
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('submissions')
-      .getPublicUrl(filePath)
-
-    setUploadProgress(100)
-
-    return publicUrl
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log('Form submitted')
     setError('')
     setUploadProgress(0)
     
@@ -96,9 +126,11 @@ export default function SubmitPage() {
 
       // Upload image if file is selected
       if (imageFile) {
+        console.log('Uploading image file...')
         finalImageUrl = await uploadImage(imageFile)
       }
 
+      console.log('Creating submission...')
       const result = await createSubmission.mutateAsync({
         content: content.trim(),
         userName: userName.trim(),
@@ -107,7 +139,7 @@ export default function SubmitPage() {
       
       console.log('Submission created:', result)
       
-      // Navigate to home page instead of submission page
+      // Navigate to home page
       navigate('/')
     } catch (err) {
       console.error('Submit error:', err)
@@ -124,6 +156,9 @@ export default function SubmitPage() {
       fileInputRef.current.value = ''
     }
   }
+
+  // Check current location
+  console.log('Current location:', window.location.pathname)
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -175,7 +210,10 @@ export default function SubmitPage() {
           <div>
             <button
               type="button"
-              onClick={() => setShowImageOptions(!showImageOptions)}
+              onClick={(e) => {
+                e.preventDefault()
+                setShowImageOptions(!showImageOptions)
+              }}
               className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors mb-3"
             >
               <Image className="w-5 h-5" />
@@ -184,11 +222,11 @@ export default function SubmitPage() {
             
             {showImageOptions && (
               <div className="space-y-3">
-                {/* Upload buttons */}
+                {/* Upload button */}
                 <div className="flex gap-3">
                   <button
                     type="button"
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={handleUploadClick}
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/5 border border-white/10 rounded-lg hover:bg-white/10 transition-colors"
                   >
                     <Upload className="w-5 h-5" />
@@ -201,6 +239,7 @@ export default function SubmitPage() {
                     accept="image/*"
                     onChange={handleFileSelect}
                     className="hidden"
+                    onClick={(e) => e.stopPropagation()}
                   />
                 </div>
 

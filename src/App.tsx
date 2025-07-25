@@ -3,6 +3,7 @@ import { SignedIn, SignedOut } from '@clerk/clerk-react'
 import Header from './components/Header'
 import HomePage from './pages/HomePage'
 import SubmissionPage from './pages/SubmissionPage'
+import SubmitPage from './pages/SubmitPage'
 import LoginPage from './pages/LoginPage'
 import SubmissionDetailPage from './pages/SubmissionDetailPage'
 
@@ -13,9 +14,9 @@ function App() {
       <main className="pt-16">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/submission/:id" element={<SubmissionDetailPage />} />
+          <Route path="/submission/:id" element={<SubmissionPage />} />
           <Route path="/message/:id" element={<SubmissionDetailPage />} />
-          <Route path="/submit" element={<SubmissionPage />} />
+          <Route path="/submit" element={<SubmitPage />} />
           <Route path="/login" element={<LoginPage />} />
         </Routes>
       </main>
