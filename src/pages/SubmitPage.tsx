@@ -171,7 +171,7 @@ export default function SubmitPage() {
           Back
         </button>
 
-        <h1 className="text-4xl font-light mb-12">Submit Your Message</h1>
+        <h1 className="text-4xl font-light mb-12">Submit Your Message No Sign up needed</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {error && (

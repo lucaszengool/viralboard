@@ -21,7 +21,6 @@ export default function Header() {
                 className="flex items-center space-x-2 btn-primary text-sm"
               >
                 <Plus className="w-4 h-4" />
-                <span>Submit ($1)</span>
               </Link>
               <UserButton afterSignOutUrl="/" />
             </SignedIn>
