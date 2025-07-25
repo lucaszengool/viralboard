@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import { Trophy, Plus, MessageSquare, Send, Heart, HeartOff, Share2, ArrowLeft, Image, Upload, X } from 'lucide-react'
@@ -38,30 +38,54 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
   const createComment = useCreateComment()
   const createSubmission = useCreateSubmission()
 
+  // Randomize submissions with last one first
+  const randomizedSubmissions = useMemo(() => {
+    if (submissions.length === 0) return []
+    
+    // Sort by created date to get the last submitted
+    const sortedByDate = [...submissions].sort((a, b) => 
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )
+    
+    // Take the last submitted (most recent)
+    const lastSubmitted = sortedByDate[0]
+    
+    // Randomize the rest
+    const others = sortedByDate.slice(1)
+    const shuffled = [...others].sort(() => Math.random() - 0.5)
+    
+    // Put last submitted first, then the randomized others
+    return [lastSubmitted, ...shuffled]
+  }, [submissions])
+
   const getNetVotes = (submission: Submission): number => {
     return submission.likes - submission.dislikes
   }
 
-  // Handle scroll with TikTok-style animations
+  // Handle scroll with TikTok-style animations - ONLY when detail is not shown
   useEffect(() => {
     const container = containerRef.current
-    if (!container) return
+    if (!container || showDetail) return
 
     let lastScrollTime = 0
     const scrollThreshold = 300
     let touchStartY = 0
 
     const handleScroll = (direction: 'up' | 'down') => {
-      if (isScrolling.current) return
+      if (isScrolling.current || showDetail) return
       
       isScrolling.current = true
       setIsTransitioning(true)
       setScrollDirection(direction)
-      setShowDetail(false)
 
       setTimeout(() => {
-        if (direction === 'down' && currentIndex < submissions.length - 1) {
-          setCurrentIndex(prev => prev + 1)
+        if (direction === 'down') {
+          // Loop back to first if at the end
+          if (currentIndex === randomizedSubmissions.length - 1) {
+            setCurrentIndex(0)
+          } else {
+            setCurrentIndex(prev => prev + 1)
+          }
         } else if (direction === 'up' && currentIndex > 0) {
           setCurrentIndex(prev => prev - 1)
         }
@@ -75,6 +99,7 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
     }
 
     const handleWheel = (e: WheelEvent) => {
+      if (showDetail) return // Don't handle wheel when detail is shown
       e.preventDefault()
       
       const now = Date.now()
@@ -85,10 +110,12 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
     }
 
     const handleTouchStart = (e: TouchEvent) => {
+      if (showDetail) return
       touchStartY = e.touches[0].clientY
     }
 
     const handleTouchEnd = (e: TouchEvent) => {
+      if (showDetail) return
       const touchEndY = e.changedTouches[0].clientY
       const diff = touchStartY - touchEndY
 
@@ -106,7 +133,7 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
       container.removeEventListener('touchstart', handleTouchStart)
       container.removeEventListener('touchend', handleTouchEnd)
     }
-  }, [currentIndex, submissions.length])
+  }, [currentIndex, randomizedSubmissions.length, showDetail])
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -169,7 +196,7 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
       return
     }
     
-    const submission = submissions[currentIndex]
+    const submission = randomizedSubmissions[currentIndex]
     try {
       await vote.mutateAsync({ submissionId: submission.id, type })
     } catch (error) {
@@ -186,7 +213,7 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
     
     if (!comment.trim()) return
     
-    const submission = submissions[currentIndex]
+    const submission = randomizedSubmissions[currentIndex]
     createComment.mutate(
       { submissionId: submission.id, content: comment },
       {
@@ -239,12 +266,12 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
   }
 
   const copyToClipboard = () => {
-    const shareUrl = `${window.location.origin}/submission/${submissions[currentIndex].id}`
+    const shareUrl = `${window.location.origin}/submission/${randomizedSubmissions[currentIndex].id}`
     navigator.clipboard.writeText(shareUrl)
     alert('Link copied to clipboard!')
   }
 
-  if (submissions.length === 0) {
+  if (randomizedSubmissions.length === 0) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
@@ -261,9 +288,9 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
     )
   }
 
-  const currentSubmission = submissions[currentIndex]
+  const currentSubmission = randomizedSubmissions[currentIndex]
 
-  // Show detail view when clicked - Same transparent style as leaderboard
+  // Show detail view when clicked - Allow normal scrolling here
   if (showDetail) {
     return (
       <div className="fixed inset-0 bg-black/98 z-50 overflow-y-auto backdrop-blur-xl animate-fade-in">
@@ -391,7 +418,7 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
 
         {/* Share Modal */}
         {showShareModal && (
-          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/80 z-60 flex items-center justify-center p-4">
             <div className="bg-gray-900 rounded-lg p-6 max-w-md w-full">
               <h3 className="text-2xl font-light mb-4">Share this message</h3>
               
@@ -453,18 +480,18 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
           <div className="absolute w-full max-w-7xl mx-auto animate-slide-down-out">
             <div className="text-center px-4 md:px-16">
               <h1 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-thin leading-tight text-white mb-12 select-none opacity-50">
-                {submissions[currentIndex - 1].content}
+                {randomizedSubmissions[currentIndex - 1].content}
               </h1>
             </div>
           </div>
         )}
 
         {/* Next submission (for smooth transition effect) */}
-        {currentIndex < submissions.length - 1 && scrollDirection === 'down' && (
+        {scrollDirection === 'down' && (
           <div className="absolute w-full max-w-7xl mx-auto animate-slide-up-out">
             <div className="text-center px-4 md:px-16">
               <h1 className="text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-thin leading-tight text-white mb-12 select-none opacity-50">
-                {submissions[currentIndex + 1].content}
+                {randomizedSubmissions[currentIndex === randomizedSubmissions.length - 1 ? 0 : currentIndex + 1].content}
               </h1>
             </div>
           </div>
@@ -496,7 +523,7 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
 
         {/* Progress indicator with animation */}
         <div className="fixed left-8 top-1/2 -translate-y-1/2 flex flex-col gap-2">
-          {submissions.map((_, index) => (
+          {randomizedSubmissions.map((_, index) => (
             <button
               key={index}
               onClick={() => {
@@ -523,7 +550,7 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
         </div>
 
         {/* Swipe hint animation */}
-        {currentIndex < submissions.length - 1 && !isTransitioning && (
+        {!isTransitioning && (
           <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex flex-col items-center animate-bounce">
             <div className="w-8 h-8 border-2 border-white/30 rounded-full flex items-center justify-center">
               <div className="w-1 h-3 bg-white/30 rounded-full"></div>
@@ -735,9 +762,12 @@ export default function FullScreenBillboard({ submissions }: FullScreenBillboard
                       key={submission.id}
                       className="group flex items-center justify-between py-6 px-6 rounded-2xl bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-all cursor-pointer"
                       onClick={() => {
-                        setCurrentIndex(submissions.indexOf(submission))
-                        setShowLeaderboard(false)
-                        setShowDetail(false)
+                        const indexInRandomized = randomizedSubmissions.findIndex(s => s.id === submission.id)
+                        if (indexInRandomized !== -1) {
+                          setCurrentIndex(indexInRandomized)
+                          setShowLeaderboard(false)
+                          setShowDetail(false)
+                        }
                       }}
                     >
                       <div className="flex items-center gap-6">
